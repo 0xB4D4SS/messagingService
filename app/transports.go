@@ -7,33 +7,50 @@ import (
 	"net/http"
 )
 
-type uppercaseRequest struct {
-	S string `json:"s"`
+type registerRequest struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
 }
 
-type uppercaseResponse struct {
-	V   string `json:"v"`
-	Err string `json:"err,omitempty"` // errors don't JSON-marshal, so we use a string
+type registerResponse struct {
+	Token string `json:"token"`
 }
 
-type countRequest struct {
-	S string `json:"s"`
+type loginRequest struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
 }
 
-type countResponse struct {
-	V int `json:"v"`
+type loginResponse struct {
+	Token string `json:"token"`
 }
 
-func decodeUppercaseRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	var request uppercaseRequest
+type logoutRequest struct {
+	Token string `json:"token"`
+}
+
+type logoutResponse struct {
+	Response string `json:"response"`
+}
+
+func decodeRegisterRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}
 	return request, nil
 }
 
-func decodeCountRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	var request countRequest
+func decodeLoginRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request loginRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, err
+	}
+	return request, nil
+}
+
+func decodeLogoutRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request logoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}
@@ -45,21 +62,27 @@ func encodeResponse(_ context.Context, w http.ResponseWriter, response interface
 }
 
 // Endpoints are a primary abstraction in go-kit. An endpoint represents a single RPC (method in our service interface)
-func makeUppercaseEndpoint(svc StringService) endpoint.Endpoint {
+
+func makeRegisterEndpoint(svc AuthService) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
-		req := request.(uppercaseRequest)
-		v, err := svc.Uppercase(req.S)
-		if err != nil {
-			return uppercaseResponse{v, err.Error()}, nil
-		}
-		return uppercaseResponse{v, ""}, nil
+		req := request.(registerRequest)
+		token, err := svc.Register(req.Login, req.Password)
+		return registerResponse{token}, err
 	}
 }
 
-func makeCountEndpoint(svc StringService) endpoint.Endpoint {
+func makeLoginEndpoint(svc AuthService) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
-		req := request.(countRequest)
-		v := svc.Count(req.S)
-		return countResponse{v}, nil
+		req := request.(loginRequest)
+		token, err := svc.Login(req.Login, req.Password)
+		return loginResponse{token}, err
+	}
+}
+
+func makeLogoutEndpoint(svc AuthService) endpoint.Endpoint {
+	return func(_ context.Context, request interface{}) (interface{}, error) {
+		req := request.(logoutRequest)
+		response, err := svc.Logout(req.Token)
+		return logoutResponse{response}, err
 	}
 }

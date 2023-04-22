@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  goapp:
+    build:
+      dockerfile: Dockerfile
+    container_name: goapp
+    depends_on:
+      - mysql
+    ports:
+      - "8080:8080"
+
+  mysql:
+    image: mysql:8
+    container_name: gomysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=test
+      - MYSQL_DATABASE=messaging
+      - MYSQL_USER=test
+      - MYSQL_PASSWORD=test
+    volumes:
+      - sql_data:/var/lib/mysql
+      - ./migrations/:/var/tmp/migrations/
+
+volumes:
+  sql_data:
