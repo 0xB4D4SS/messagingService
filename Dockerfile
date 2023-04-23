@@ -6,6 +6,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY ./app/*.go ./
+COPY *.env ./
 
 RUN go build -o /goapp
 

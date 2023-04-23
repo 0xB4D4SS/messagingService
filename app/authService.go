@@ -2,8 +2,7 @@ package main
 
 import (
 	"database/sql"
-	"errors"
-	"fmt"
+	"os"
 )
 
 type AuthService interface {
@@ -19,7 +18,8 @@ func (authService) Register(login string, password string) (string, error) {
 		return "", ErrEmpty
 	}
 
-	db, conErr := sql.Open("mysql", dbConfig)
+	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
+	defer db.Close()
 
 	if conErr != nil {
 		return "", conErr
@@ -27,16 +27,15 @@ func (authService) Register(login string, password string) (string, error) {
 
 	hash := GenerateSHA256Hash(password)
 	token := GenerateSecureToken(tokenDefaultLength)
-	hash = fmt.Sprintf("%x", hash)
-	_, err := db.Query(
+	_, queryErr := db.Query(
 		"insert into users (login, password, token) values (?, ?, ?)",
 		login,
 		hash,
 		token,
 	)
 
-	if err != nil {
-		return "", err
+	if queryErr != nil {
+		return "", queryErr
 	}
 
 	return token, nil
@@ -47,22 +46,22 @@ func (authService) Login(login string, password string) (string, error) {
 		return "", ErrEmpty
 	}
 
-	db, conErr := sql.Open("mysql", dbConfig)
+	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
+	defer db.Close()
 
 	if conErr != nil {
 		return "", conErr
 	}
 
 	hash := GenerateSHA256Hash(password)
-	hash = fmt.Sprintf("%x", hash)
-	rows, err := db.Query(
+	rows, queryErr := db.Query(
 		"select * from users where `login` = ? and `password` = ?",
 		login,
 		hash,
 	)
 
-	if err != nil {
-		return "", err
+	if queryErr != nil {
+		return "", queryErr
 	}
 
 	if rows.Next() != false {
@@ -78,15 +77,15 @@ func (authService) Login(login string, password string) (string, error) {
 		}
 
 		token := GenerateSecureToken(tokenDefaultLength)
-		_, err := db.Query(
+		_, queryErr := db.Query(
 			"update users set token = ? where `login` = ? and `password` = ?",
 			token,
 			login,
-			string(hash[:]),
+			hash,
 		)
 
-		if err != nil {
-			return "", err
+		if queryErr != nil {
+			return "", queryErr
 		}
 
 		return token, nil
@@ -100,19 +99,20 @@ func (authService) Logout(token string) (string, error) {
 		return "", ErrEmpty
 	}
 
-	db, conErr := sql.Open("mysql", dbConfig)
+	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
+	defer db.Close()
 
 	if conErr != nil {
 		return "", conErr
 	}
 
-	rows, err := db.Query(
+	rows, queryErr := db.Query(
 		"select * from users where `token` = ?",
 		token,
 	)
 
-	if err != nil {
-		return "", err
+	if queryErr != nil {
+		return "", queryErr
 	}
 
 	if rows.Next() != false {
@@ -123,10 +123,10 @@ func (authService) Logout(token string) (string, error) {
 			return "", scanErr
 		}
 
-		_, err := db.Query("update users set token = null where `token` = ?", token)
+		_, queryErr := db.Query("update users set token = null where `token` = ?", token)
 
-		if err != nil {
-			return "", err
+		if queryErr != nil {
+			return "", queryErr
 		}
 
 		return "Logged out", nil
@@ -134,9 +134,3 @@ func (authService) Logout(token string) (string, error) {
 
 	return "", ErrNotFound
 }
-
-// ErrEmpty is returned when input string is empty
-var ErrEmpty = errors.New("Empty string")
-
-// ErrNotFound is returned when no data found in db
-var ErrNotFound = errors.New("Not found")

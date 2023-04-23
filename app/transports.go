@@ -7,32 +7,6 @@ import (
 	"net/http"
 )
 
-type registerRequest struct {
-	Login    string `json:"login"`
-	Password string `json:"password"`
-}
-
-type registerResponse struct {
-	Token string `json:"token"`
-}
-
-type loginRequest struct {
-	Login    string `json:"login"`
-	Password string `json:"password"`
-}
-
-type loginResponse struct {
-	Token string `json:"token"`
-}
-
-type logoutRequest struct {
-	Token string `json:"token"`
-}
-
-type logoutResponse struct {
-	Response string `json:"response"`
-}
-
 func decodeRegisterRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -51,6 +25,22 @@ func decodeLoginRequest(_ context.Context, r *http.Request) (interface{}, error)
 
 func decodeLogoutRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request logoutRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, err
+	}
+	return request, nil
+}
+
+func decodeSendRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request sendRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, err
+	}
+	return request, nil
+}
+
+func decodeGetRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request getRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}
@@ -84,5 +74,21 @@ func makeLogoutEndpoint(svc AuthService) endpoint.Endpoint {
 		req := request.(logoutRequest)
 		response, err := svc.Logout(req.Token)
 		return logoutResponse{response}, err
+	}
+}
+
+func makeSendEndpoint(svc MessageService) endpoint.Endpoint {
+	return func(_ context.Context, request interface{}) (interface{}, error) {
+		req := request.(sendRequest)
+		response, err := svc.Send(req.Token, req.Data)
+		return sendResponse{response}, err
+	}
+}
+
+func makeGetEndpoint(svc MessageService) endpoint.Endpoint {
+	return func(_ context.Context, request interface{}) (interface{}, error) {
+		req := request.(getRequest)
+		data, err := svc.Get(req.Token, req.Login)
+		return getResponse{data}, err
 	}
 }
