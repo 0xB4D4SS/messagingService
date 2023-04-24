@@ -18,7 +18,7 @@ const tokenDefaultLength = 11
 // type Endpoint func(ctx context.Context, request interface{}) (response interface{}, err error)
 
 func initEnv() {
-	err := dotenv.Load("local.env")
+	err := dotenv.Load(".env")
 	if err != nil {
 		log.Fatalf("Error loading env file. Err: %s", err)
 	}
