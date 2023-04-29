@@ -1,10 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	dotenv "github.com/joho/godotenv"
 	"log"
@@ -23,24 +19,6 @@ func initEnv() {
 	}
 }
 
-func GenerateSecureToken(length int) string {
-	b := make([]byte, length)
-	if _, err := rand.Read(b); err != nil {
-		return ""
-	}
-	return hex.EncodeToString(b)
-}
-
-func GenerateSHA256Hash(input string) string {
-	h := sha256.New()
-	h.Write([]byte(input))
-	hash := h.Sum(nil)
-	output := fmt.Sprintf("%x", string(hash[:]))
-
-	return output
-}
-
-// Transports expose the service to the network. In this first example we utilize JSON over HTTP.
 func main() {
 	initEnv()
 	authSvc := authService{}
