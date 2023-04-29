@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	httptransport "github.com/go-kit/kit/transport/http"
 	_ "github.com/go-sql-driver/mysql"
 	dotenv "github.com/joho/godotenv"
 	"log"
@@ -47,40 +46,5 @@ func main() {
 	authSvc := authService{}
 	messageSvc := messageService{}
 
-	registerHandler := httptransport.NewServer(
-		makeRegisterEndpoint(authSvc),
-		decodeRegisterRequest,
-		encodeResponse,
-	)
-
-	loginHandler := httptransport.NewServer(
-		makeLoginEndpoint(authSvc),
-		decodeLoginRequest,
-		encodeResponse,
-	)
-
-	logoutHandler := httptransport.NewServer(
-		makeLogoutEndpoint(authSvc),
-		decodeLogoutRequest,
-		encodeResponse,
-	)
-
-	sendHandler := httptransport.NewServer(
-		makeSendEndpoint(messageSvc),
-		decodeSendRequest,
-		encodeResponse,
-	)
-
-	getHandler := httptransport.NewServer(
-		makeGetEndpoint(messageSvc),
-		decodeGetRequest,
-		encodeResponse,
-	)
-
-	http.Handle("/register", registerHandler)
-	http.Handle("/login", loginHandler)
-	http.Handle("/logout", logoutHandler)
-	http.Handle("/send", sendHandler)
-	http.Handle("/get", getHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", MakeHTTPHandler(authSvc, messageSvc)))
 }

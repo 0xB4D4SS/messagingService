@@ -4,8 +4,48 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-kit/kit/endpoint"
+	httptransport "github.com/go-kit/kit/transport/http"
+	"github.com/gorilla/mux"
 	"net/http"
 )
+
+func MakeHTTPHandler(authSvc AuthService, msgSvc MessageService) http.Handler {
+	r := mux.NewRouter()
+	e := MakeServerEndpoints(authSvc, msgSvc)
+
+	r.Methods("POST").Path("/register").Handler(
+		httptransport.NewServer(
+			e.RegisterEndpoint,
+			decodeRegisterRequest,
+			encodeResponse,
+		))
+	r.Methods("POST").Path("/login").Handler(
+		httptransport.NewServer(
+			e.LoginEndpoint,
+			decodeLoginRequest,
+			encodeResponse,
+		))
+	r.Methods("POST").Path("/logout").Handler(
+		httptransport.NewServer(
+			e.LogoutEndpoint,
+			decodeLogoutRequest,
+			encodeResponse,
+		))
+	r.Methods("POST").Path("/send").Handler(
+		httptransport.NewServer(
+			e.SendEndpoint,
+			decodeSendRequest,
+			encodeResponse,
+		))
+	r.Methods("POST").Path("/get").Handler(
+		httptransport.NewServer(
+			e.GetEndpoint,
+			decodeGetRequest,
+			encodeResponse,
+		))
+
+	return r
+}
 
 func decodeRegisterRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request registerRequest
