@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
 )
 
@@ -111,7 +110,6 @@ func (authService) Logout(token string) (string, error) {
 		"select * from users where `token` = ?",
 		token,
 	)
-	fmt.Println(token, rows, queryErr)
 
 	if queryErr != nil {
 		return "", queryErr
