@@ -43,6 +43,12 @@ func MakeHTTPHandler(authSvc AuthService, msgSvc MessageService) http.Handler {
 			decodeGetRequest,
 			encodeResponse,
 		))
+	r.Methods("POST").Path("/get-last").Handler(
+		httptransport.NewServer(
+			e.GetLastEndpoint,
+			decodeGetLastRequest,
+			encodeResponse,
+		))
 
 	return r
 }
@@ -80,6 +86,14 @@ func decodeSendRequest(_ context.Context, r *http.Request) (interface{}, error) 
 }
 
 func decodeGetRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request getRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, err
+	}
+	return request, nil
+}
+
+func decodeGetLastRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request getRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
@@ -130,5 +144,13 @@ func makeGetEndpoint(svc MessageService) endpoint.Endpoint {
 		req := request.(getRequest)
 		data, err := svc.Get(req.Token, req.Login)
 		return getResponse{data}, err
+	}
+}
+
+func makeGetLastEndpoint(svc MessageService) endpoint.Endpoint {
+	return func(_ context.Context, request interface{}) (interface{}, error) {
+		req := request.(getRequest)
+		data, err := svc.GetLast(req.Token, req.Login)
+		return getLastResponse{*data}, err
 	}
 }

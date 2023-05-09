@@ -19,3 +19,7 @@ type sendResponse struct {
 type getResponse struct {
 	Data []Message `json:"data"`
 }
+
+type getLastResponse struct {
+	Data Message `json:"data"`
+}

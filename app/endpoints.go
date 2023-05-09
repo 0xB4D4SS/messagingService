@@ -8,6 +8,7 @@ type Endpoints struct {
 	LogoutEndpoint   endpoint.Endpoint
 	SendEndpoint     endpoint.Endpoint
 	GetEndpoint      endpoint.Endpoint
+	GetLastEndpoint  endpoint.Endpoint
 }
 
 func MakeServerEndpoints(authSvc AuthService, msgSvc MessageService) Endpoints {
@@ -17,5 +18,6 @@ func MakeServerEndpoints(authSvc AuthService, msgSvc MessageService) Endpoints {
 		LogoutEndpoint:   makeLogoutEndpoint(authSvc),
 		SendEndpoint:     makeSendEndpoint(msgSvc),
 		GetEndpoint:      makeGetEndpoint(msgSvc),
+		GetLastEndpoint:  makeGetLastEndpoint(msgSvc),
 	}
 }
