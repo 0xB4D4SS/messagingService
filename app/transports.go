@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
@@ -9,9 +10,9 @@ import (
 	"net/http"
 )
 
-func MakeHTTPHandler(authSvc AuthService, msgSvc MessageService) http.Handler {
+func MakeHTTPHandler(authSvc AuthService, msgSvc MessageService, db *sql.DB) http.Handler {
 	r := mux.NewRouter()
-	e := MakeServerEndpoints(authSvc, msgSvc)
+	e := MakeServerEndpoints(authSvc, msgSvc, db)
 
 	r.Methods("POST").Path("/register").Handler(
 		httptransport.NewServer(
@@ -107,50 +108,50 @@ func encodeResponse(_ context.Context, w http.ResponseWriter, response interface
 
 // Endpoints are a primary abstraction in go-kit. An endpoint represents a single RPC (method in our service interface)
 
-func makeRegisterEndpoint(svc AuthService) endpoint.Endpoint {
+func makeRegisterEndpoint(svc AuthService, db *sql.DB) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(registerRequest)
-		token, err := svc.Register(req.Login, req.Password)
+		token, err := svc.Register(req.Login, req.Password, db)
 		return registerResponse{token}, err
 	}
 }
 
-func makeLoginEndpoint(svc AuthService) endpoint.Endpoint {
+func makeLoginEndpoint(svc AuthService, db *sql.DB) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(loginRequest)
-		token, err := svc.Login(req.Login, req.Password)
+		token, err := svc.Login(req.Login, req.Password, db)
 		return loginResponse{token}, err
 	}
 }
 
-func makeLogoutEndpoint(svc AuthService) endpoint.Endpoint {
+func makeLogoutEndpoint(svc AuthService, db *sql.DB) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(logoutRequest)
-		response, err := svc.Logout(req.Token)
+		response, err := svc.Logout(req.Token, db)
 		return logoutResponse{response}, err
 	}
 }
 
-func makeSendEndpoint(svc MessageService) endpoint.Endpoint {
+func makeSendEndpoint(svc MessageService, db *sql.DB) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(sendRequest)
-		response, err := svc.Send(req.Token, req.Data)
+		response, err := svc.Send(req.Token, req.Data, db)
 		return sendResponse{response}, err
 	}
 }
 
-func makeGetEndpoint(svc MessageService) endpoint.Endpoint {
+func makeGetEndpoint(svc MessageService, db *sql.DB) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(getRequest)
-		data, err := svc.Get(req.Token, req.Login)
+		data, err := svc.Get(req.Token, req.Login, db)
 		return getResponse{data}, err
 	}
 }
 
-func makeGetLastEndpoint(svc MessageService) endpoint.Endpoint {
+func makeGetLastEndpoint(svc MessageService, db *sql.DB) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(getRequest)
-		data, err := svc.GetLast(req.Token, req.Login)
+		data, err := svc.GetLast(req.Token, req.Login, db)
 		return getLastResponse{*data}, err
 	}
 }

@@ -2,27 +2,19 @@ package main
 
 import (
 	"database/sql"
-	"os"
 )
 
 type AuthService interface {
-	Register(string, string) (string, error)
-	Login(string, string) (string, error)
-	Logout(string) (string, error)
+	Register(string, string, *sql.DB) (string, error)
+	Login(string, string, *sql.DB) (string, error)
+	Logout(string, *sql.DB) (string, error)
 }
 
 type authService struct{}
 
-func (authService) Register(login string, password string) (string, error) {
+func (authService) Register(login string, password string, db *sql.DB) (string, error) {
 	if login == "" || password == "" {
 		return "", ErrEmpty
-	}
-
-	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
-	defer db.Close()
-
-	if conErr != nil {
-		return "", conErr
 	}
 
 	hash := GenerateSHA256Hash(password)
@@ -41,21 +33,32 @@ func (authService) Register(login string, password string) (string, error) {
 	return token, nil
 }
 
-func (authService) Login(login string, password string) (string, error) {
+func (authService) Login(login string, password string, db *sql.DB) (string, error) {
 	if login == "" || password == "" {
 		return "", ErrEmpty
 	}
 
-	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
-	defer db.Close()
+	hash := GenerateSHA256Hash(password)
+	authUser := db.QueryRow(
+		"select * from users where `login` = ? and `password` = ?",
+		login,
+		hash,
+	)
+	u := User{}
+	authUserScanErr := authUser.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
 
-	if conErr != nil {
-		return "", conErr
+	if authUserScanErr != nil {
+		return "", ErrNotFound
 	}
 
-	hash := GenerateSHA256Hash(password)
-	rows, queryErr := db.Query(
-		"select * from users where `login` = ? and `password` = ?",
+	if u.Token != nil {
+		return *u.Token, nil
+	}
+
+	token := GenerateSecureToken(tokenDefaultLength)
+	_, queryErr := db.Query(
+		"update users set token = ? where `login` = ? and `password` = ?",
+		token,
 		login,
 		hash,
 	)
@@ -64,73 +67,30 @@ func (authService) Login(login string, password string) (string, error) {
 		return "", queryErr
 	}
 
-	if rows.Next() != false {
-		u := User{}
-		scanErr := rows.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
-
-		if scanErr != nil {
-			return "", scanErr
-		}
-
-		if u.Token != nil {
-			return *u.Token, nil
-		}
-
-		token := GenerateSecureToken(tokenDefaultLength)
-		_, queryErr := db.Query(
-			"update users set token = ? where `login` = ? and `password` = ?",
-			token,
-			login,
-			hash,
-		)
-
-		if queryErr != nil {
-			return "", queryErr
-		}
-
-		return token, nil
-	}
-
-	return "", ErrNotFound
+	return token, nil
 }
 
-func (authService) Logout(token string) (string, error) {
+func (authService) Logout(token string, db *sql.DB) (string, error) {
 	if token == "" {
 		return "", ErrEmpty
 	}
 
-	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
-	defer db.Close()
-
-	if conErr != nil {
-		return "", conErr
-	}
-
-	rows, queryErr := db.Query(
+	authUser := db.QueryRow(
 		"select * from users where `token` = ?",
 		token,
 	)
+	u := User{}
+	authUserScanErr := authUser.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
+
+	if authUserScanErr != nil {
+		return "", ErrNotFound
+	}
+
+	_, queryErr := db.Query("update users set token = null where `token` = ?", token)
 
 	if queryErr != nil {
 		return "", queryErr
 	}
 
-	if rows.Next() != false {
-		u := User{}
-		scanErr := rows.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
-
-		if scanErr != nil {
-			return "", scanErr
-		}
-
-		_, queryErr := db.Query("update users set token = null where `token` = ?", token)
-
-		if queryErr != nil {
-			return "", queryErr
-		}
-
-		return "Logged out", nil
-	}
-
-	return "", ErrNotFound
+	return "Logged out", nil
 }

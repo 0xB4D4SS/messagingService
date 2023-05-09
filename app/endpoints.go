@@ -1,6 +1,9 @@
 package main
 
-import "github.com/go-kit/kit/endpoint"
+import (
+	"database/sql"
+	"github.com/go-kit/kit/endpoint"
+)
 
 type Endpoints struct {
 	RegisterEndpoint endpoint.Endpoint
@@ -11,13 +14,13 @@ type Endpoints struct {
 	GetLastEndpoint  endpoint.Endpoint
 }
 
-func MakeServerEndpoints(authSvc AuthService, msgSvc MessageService) Endpoints {
+func MakeServerEndpoints(authSvc AuthService, msgSvc MessageService, db *sql.DB) Endpoints {
 	return Endpoints{
-		RegisterEndpoint: makeRegisterEndpoint(authSvc),
-		LoginEndpoint:    makeLoginEndpoint(authSvc),
-		LogoutEndpoint:   makeLogoutEndpoint(authSvc),
-		SendEndpoint:     makeSendEndpoint(msgSvc),
-		GetEndpoint:      makeGetEndpoint(msgSvc),
-		GetLastEndpoint:  makeGetLastEndpoint(msgSvc),
+		RegisterEndpoint: makeRegisterEndpoint(authSvc, db),
+		LoginEndpoint:    makeLoginEndpoint(authSvc, db),
+		LogoutEndpoint:   makeLogoutEndpoint(authSvc, db),
+		SendEndpoint:     makeSendEndpoint(msgSvc, db),
+		GetEndpoint:      makeGetEndpoint(msgSvc, db),
+		GetLastEndpoint:  makeGetLastEndpoint(msgSvc, db),
 	}
 }
