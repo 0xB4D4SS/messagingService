@@ -17,26 +17,40 @@ func (messageService) Send(token string, data string, db *sql.DB) (string, error
 		return "", ErrEmpty
 	}
 
-	authUser := db.QueryRow("select * from users where token = ?", token)
+	authUser, authQueryErr := db.Query("select * from users where token = ?", token)
+
+	if authQueryErr != nil {
+		return "", authQueryErr
+	}
+
+	defer authUser.Close()
+
 	u := User{}
-	authUserScanErr := authUser.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
 
-	if authUserScanErr != nil {
-		return "", ErrNotFound
+	if authUser.Next() {
+		authUserScanErr := authUser.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
+
+		if authUserScanErr != nil {
+			return "", ErrNotFound
+		}
+
+		m := Message{
+			UserId:  u.Id,
+			Message: data,
+		}
+
+		rows, queryErr := db.Query("insert into messages (user_id, data) values (?, ?)", m.UserId, m.Message)
+
+		if queryErr != nil {
+			return "", queryErr
+		}
+
+		defer rows.Close()
+
+		return "ok", nil
 	}
 
-	m := Message{
-		UserId:  u.Id,
-		Message: data,
-	}
-
-	_, queryErr := db.Query("insert into messages (user_id, data) values (?, ?)", m.UserId, m.Message)
-
-	if queryErr != nil {
-		return "", queryErr
-	}
-
-	return "ok", nil
+	return "", ErrNotFound
 }
 
 func (messageService) Get(token string, login string, db *sql.DB) ([]Message, error) {
@@ -45,39 +59,64 @@ func (messageService) Get(token string, login string, db *sql.DB) ([]Message, er
 	}
 
 	authU := User{}
-	authUser := db.QueryRow("select * from users where token = ?", token)
-	authUserScanErr := authUser.Scan(&authU.Id, &authU.Login, &authU.Password, &authU.Token)
+	authUser, authQueryErr := db.Query("select * from users where token = ?", token)
 
-	if authUserScanErr != nil {
-		return nil, ErrNotFound
+	if authQueryErr != nil {
+		return nil, authQueryErr
 	}
 
-	selectUser := db.QueryRow("select * from users where login = ?", login)
-	u := User{}
-	selectUserScanErr := selectUser.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
+	defer authUser.Close()
 
-	if selectUserScanErr != nil {
-		return nil, ErrNotFound
-	}
+	if authUser.Next() {
+		authUserScanErr := authUser.Scan(&authU.Id, &authU.Login, &authU.Password, &authU.Token)
 
-	messages, queryErr := db.Query("select * from messages where user_id = ?", u.Id)
-
-	if queryErr != nil {
-		return nil, queryErr
-	}
-
-	var data []Message
-	for messages.Next() {
-		m := Message{}
-		scanErr := messages.Scan(&m.Id, &m.UserId, &m.Message)
-		if scanErr != nil {
-			return nil, scanErr
+		if authUserScanErr != nil {
+			return nil, ErrNotFound
 		}
 
-		data = append(data, m)
+		selectUser, selectQueryErr := db.Query("select * from users where login = ?", login)
+
+		if selectQueryErr != nil {
+			return nil, selectQueryErr
+		}
+
+		defer selectUser.Close()
+
+		u := User{}
+
+		if selectUser.Next() {
+			selectUserScanErr := selectUser.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
+
+			if selectUserScanErr != nil {
+				return nil, ErrNotFound
+			}
+
+			messages, queryErr := db.Query("select * from messages where user_id = ?", u.Id)
+
+			if queryErr != nil {
+				return nil, queryErr
+			}
+
+			defer messages.Close()
+
+			var data []Message
+			for messages.Next() {
+				m := Message{}
+				scanErr := messages.Scan(&m.Id, &m.UserId, &m.Message)
+				if scanErr != nil {
+					return nil, scanErr
+				}
+
+				data = append(data, m)
+			}
+
+			return data, nil
+		}
+
+		return nil, ErrNotFound
 	}
 
-	return data, nil
+	return nil, ErrNotFound
 }
 
 func (messageService) GetLast(token string, login string, db *sql.DB) (*Message, error) {
@@ -86,29 +125,61 @@ func (messageService) GetLast(token string, login string, db *sql.DB) (*Message,
 	}
 
 	authU := User{}
-	authUser := db.QueryRow("select * from users where token = ?", token)
-	authUserScanErr := authUser.Scan(&authU.Id, &authU.Login, &authU.Password, &authU.Token)
+	authUser, authQueryErr := db.Query("select * from users where token = ?", token)
 
-	if authUserScanErr != nil {
+	if authQueryErr != nil {
+		return nil, authQueryErr
+	}
+
+	defer authUser.Close()
+
+	if authUser.Next() {
+		authUserScanErr := authUser.Scan(&authU.Id, &authU.Login, &authU.Password, &authU.Token)
+
+		if authUserScanErr != nil {
+			return nil, ErrNotFound
+		}
+
+		selectUser, selectQueryErr := db.Query("select * from users where login = ?", login)
+
+		if selectQueryErr != nil {
+			return nil, selectQueryErr
+		}
+
+		defer selectUser.Close()
+
+		if selectUser.Next() {
+			u := User{}
+			userScanErr := selectUser.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
+
+			if userScanErr != nil {
+				return nil, ErrNotFound
+			}
+
+			message, messageQueryErr := db.Query("select * from messages where user_id = ? order by id desc limit 1", u.Id)
+
+			if messageQueryErr != nil {
+				return nil, messageQueryErr
+			}
+
+			defer message.Close()
+
+			if message.Next() {
+				m := Message{}
+				messageScanErr := message.Scan(&m.Id, &m.UserId, &m.Message)
+
+				if messageScanErr != nil {
+					return nil, ErrNotFound
+				}
+
+				return &m, nil
+			}
+
+			return nil, ErrNotFound
+		}
+
 		return nil, ErrNotFound
 	}
 
-	selectUser := db.QueryRow("select * from users where login = ?", login)
-	u := User{}
-	userScanErr := selectUser.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
-
-	if userScanErr != nil {
-		return nil, ErrNotFound
-	}
-
-	message := db.QueryRow("select * from messages where user_id = ? order by id desc limit 1", u.Id)
-	m := Message{}
-	messageScanErr := message.Scan(&m.Id, &m.UserId, &m.Message)
-
-	if messageScanErr != nil {
-		return nil, ErrNotFound
-	}
-
-	return &m, nil
-
+	return nil, ErrNotFound
 }

@@ -25,7 +25,6 @@ func main() {
 	initEnv()
 	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
 	db.SetMaxOpenConns(5)
-	db.SetMaxIdleConns(5)
 	authSvc := authService{}
 	messageSvc := messageService{}
 

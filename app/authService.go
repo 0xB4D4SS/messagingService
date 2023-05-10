@@ -19,7 +19,7 @@ func (authService) Register(login string, password string, db *sql.DB) (string, 
 
 	hash := GenerateSHA256Hash(password)
 	token := GenerateSecureToken(tokenDefaultLength)
-	_, queryErr := db.Query(
+	rows, queryErr := db.Query(
 		"insert into users (login, password, token) values (?, ?, ?)",
 		login,
 		hash,
@@ -30,6 +30,8 @@ func (authService) Register(login string, password string, db *sql.DB) (string, 
 		return "", queryErr
 	}
 
+	defer rows.Close()
+
 	return token, nil
 }
 
@@ -39,35 +41,48 @@ func (authService) Login(login string, password string, db *sql.DB) (string, err
 	}
 
 	hash := GenerateSHA256Hash(password)
-	authUser := db.QueryRow(
+	authUser, authQueryErr := db.Query(
 		"select * from users where `login` = ? and `password` = ?",
 		login,
 		hash,
 	)
+
+	if authQueryErr != nil {
+		return "", authQueryErr
+	}
+
+	defer authUser.Close()
+
 	u := User{}
-	authUserScanErr := authUser.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
+	if authUser.Next() {
+		authUserScanErr := authUser.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
 
-	if authUserScanErr != nil {
-		return "", ErrNotFound
+		if authUserScanErr != nil {
+			return "", ErrNotFound
+		}
+
+		if u.Token != nil {
+			return *u.Token, nil
+		}
+
+		token := GenerateSecureToken(tokenDefaultLength)
+		rows, queryErr := db.Query(
+			"update users set token = ? where `login` = ? and `password` = ?",
+			token,
+			login,
+			hash,
+		)
+
+		if queryErr != nil {
+			return "", queryErr
+		}
+
+		defer rows.Close()
+
+		return token, nil
 	}
 
-	if u.Token != nil {
-		return *u.Token, nil
-	}
-
-	token := GenerateSecureToken(tokenDefaultLength)
-	_, queryErr := db.Query(
-		"update users set token = ? where `login` = ? and `password` = ?",
-		token,
-		login,
-		hash,
-	)
-
-	if queryErr != nil {
-		return "", queryErr
-	}
-
-	return token, nil
+	return "", ErrNotFound
 }
 
 func (authService) Logout(token string, db *sql.DB) (string, error) {
@@ -75,22 +90,35 @@ func (authService) Logout(token string, db *sql.DB) (string, error) {
 		return "", ErrEmpty
 	}
 
-	authUser := db.QueryRow(
+	authUser, authQueryErr := db.Query(
 		"select * from users where `token` = ?",
 		token,
 	)
+
+	if authQueryErr != nil {
+		return "", authQueryErr
+	}
+
+	defer authUser.Close()
+
 	u := User{}
-	authUserScanErr := authUser.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
+	if authUser.Next() {
+		authUserScanErr := authUser.Scan(&u.Id, &u.Login, &u.Password, &u.Token)
 
-	if authUserScanErr != nil {
-		return "", ErrNotFound
+		if authUserScanErr != nil {
+			return "", ErrNotFound
+		}
+
+		rows, queryErr := db.Query("update users set token = null where `token` = ?", token)
+
+		if queryErr != nil {
+			return "", queryErr
+		}
+
+		defer rows.Close()
+
+		return "Logged out", nil
 	}
 
-	_, queryErr := db.Query("update users set token = null where `token` = ?", token)
-
-	if queryErr != nil {
-		return "", queryErr
-	}
-
-	return "Logged out", nil
+	return "", ErrNotFound
 }
