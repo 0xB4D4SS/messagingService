@@ -2,17 +2,24 @@ package main
 
 import (
 	"database/sql"
+	"os"
 )
 
 type MessageService interface {
-	Send(string, string, *sql.DB) (string, error)
-	Get(string, string, *sql.DB) ([]Message, error)
-	GetLast(string, string, *sql.DB) (*Message, error)
+	Send(string, string) (string, error)
+	Get(string, string) ([]Message, error)
+	GetLast(string, string) (*Message, error)
 }
 
 type messageService struct{}
 
-func (messageService) Send(token string, data string, db *sql.DB) (string, error) {
+func (messageService) Send(token string, data string) (string, error) {
+	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
+	if conErr != nil {
+		return "", conErr
+	}
+	defer db.Close()
+
 	if token == "" || data == "" {
 		return "", ErrEmpty
 	}
@@ -39,7 +46,12 @@ func (messageService) Send(token string, data string, db *sql.DB) (string, error
 	return "ok", nil
 }
 
-func (messageService) Get(token string, login string, db *sql.DB) ([]Message, error) {
+func (messageService) Get(token string, login string) ([]Message, error) {
+	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
+	if conErr != nil {
+		return nil, conErr
+	}
+	defer db.Close()
 	if token == "" || login == "" {
 		return nil, ErrEmpty
 	}
@@ -80,7 +92,12 @@ func (messageService) Get(token string, login string, db *sql.DB) ([]Message, er
 	return data, nil
 }
 
-func (messageService) GetLast(token string, login string, db *sql.DB) (*Message, error) {
+func (messageService) GetLast(token string, login string) (*Message, error) {
+	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
+	if conErr != nil {
+		return nil, conErr
+	}
+	defer db.Close()
 	if token == "" || login == "" {
 		return nil, ErrEmpty
 	}
@@ -110,5 +127,4 @@ func (messageService) GetLast(token string, login string, db *sql.DB) (*Message,
 	}
 
 	return &m, nil
-
 }
