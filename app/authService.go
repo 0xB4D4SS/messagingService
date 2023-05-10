@@ -2,23 +2,17 @@ package main
 
 import (
 	"database/sql"
-	"os"
 )
 
 type AuthService interface {
-	Register(string, string) (string, error)
-	Login(string, string) (string, error)
-	Logout(string) (string, error)
+	Register(string, string, *sql.DB) (string, error)
+	Login(string, string, *sql.DB) (string, error)
+	Logout(string, *sql.DB) (string, error)
 }
 
 type authService struct{}
 
-func (authService) Register(login string, password string) (string, error) {
-	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
-	if conErr != nil {
-		return "", conErr
-	}
-	defer db.Close()
+func (authService) Register(login string, password string, db *sql.DB) (string, error) {
 	if login == "" || password == "" {
 		return "", ErrEmpty
 	}
@@ -39,12 +33,7 @@ func (authService) Register(login string, password string) (string, error) {
 	return token, nil
 }
 
-func (authService) Login(login string, password string) (string, error) {
-	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
-	if conErr != nil {
-		return "", conErr
-	}
-	defer db.Close()
+func (authService) Login(login string, password string, db *sql.DB) (string, error) {
 	if login == "" || password == "" {
 		return "", ErrEmpty
 	}
@@ -81,12 +70,7 @@ func (authService) Login(login string, password string) (string, error) {
 	return token, nil
 }
 
-func (authService) Logout(token string) (string, error) {
-	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
-	if conErr != nil {
-		return "", conErr
-	}
-	defer db.Close()
+func (authService) Logout(token string, db *sql.DB) (string, error) {
 	if token == "" {
 		return "", ErrEmpty
 	}
