@@ -33,5 +33,7 @@ func main() {
 		log.Fatal(conErr)
 	}
 
+	defer db.Close()
+
 	log.Fatal(http.ListenAndServe(":8080", MakeHTTPHandler(authSvc, messageSvc, db)))
 }
