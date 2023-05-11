@@ -24,15 +24,12 @@ func initEnv() {
 func main() {
 	initEnv()
 	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
-	db.SetMaxOpenConns(5)
 	authSvc := authService{}
 	messageSvc := messageService{}
 
 	if conErr != nil {
 		log.Fatal(conErr)
 	}
-
-	defer db.Close()
 
 	log.Fatal(http.ListenAndServe(":8080", MakeHTTPHandler(authSvc, messageSvc, db)))
 }
