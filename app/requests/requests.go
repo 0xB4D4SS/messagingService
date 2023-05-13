@@ -1,25 +1,25 @@
-package main
+package requests
 
-type registerRequest struct {
+type RegisterRequest struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }
 
-type loginRequest struct {
+type LoginRequest struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }
 
-type logoutRequest struct {
+type LogoutRequest struct {
 	Token string `json:"token"`
 }
 
-type sendRequest struct {
+type SendRequest struct {
 	Token string `json:"token"`
 	Data  string `json:"data"`
 }
 
-type getRequest struct {
+type GetRequest struct {
 	Token string `json:"token"`
 	Login string `json:"login"`
 }

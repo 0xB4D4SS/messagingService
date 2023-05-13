@@ -5,10 +5,11 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY ./app/*.go ./
-COPY *.env ./
+COPY ./main.go ./
+COPY ./app/ ./app
+COPY ./*.env ./
 
-RUN go build -o /goapp
+RUN go build -o /goapp ./
 
 EXPOSE 8080
 

@@ -1,18 +1,28 @@
-package main
+package transports
 
 import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
+	"messagingService/app/endpoints"
+	"messagingService/app/requests"
+	"messagingService/app/services"
 	"net/http"
 )
 
-func MakeHTTPHandler(authSvc AuthService, msgSvc MessageService, db *sql.DB) http.Handler {
+func commonMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/json")
+		next.ServeHTTP(w, r)
+	})
+}
+
+func MakeHTTPHandler(authSvc services.AuthServiceInterface, msgSvc services.MessageServiceInterface, db *sql.DB) http.Handler {
 	r := mux.NewRouter()
-	e := MakeServerEndpoints(authSvc, msgSvc, db)
+	r.Use(commonMiddleware)
+	e := endpoints.MakeServerEndpoints(authSvc, msgSvc, db)
 
 	r.Methods("POST").Path("/register").Handler(
 		httptransport.NewServer(
@@ -55,7 +65,7 @@ func MakeHTTPHandler(authSvc AuthService, msgSvc MessageService, db *sql.DB) htt
 }
 
 func decodeRegisterRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	var request registerRequest
+	var request requests.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}
@@ -63,7 +73,7 @@ func decodeRegisterRequest(_ context.Context, r *http.Request) (interface{}, err
 }
 
 func decodeLoginRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	var request loginRequest
+	var request requests.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}
@@ -71,7 +81,7 @@ func decodeLoginRequest(_ context.Context, r *http.Request) (interface{}, error)
 }
 
 func decodeLogoutRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	var request logoutRequest
+	var request requests.LogoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func decodeLogoutRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeSendRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	var request sendRequest
+	var request requests.SendRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}
@@ -87,7 +97,7 @@ func decodeSendRequest(_ context.Context, r *http.Request) (interface{}, error) 
 }
 
 func decodeGetRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	var request getRequest
+	var request requests.GetRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}
@@ -95,7 +105,7 @@ func decodeGetRequest(_ context.Context, r *http.Request) (interface{}, error) {
 }
 
 func decodeGetLastRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	var request getRequest
+	var request requests.GetRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}
@@ -104,54 +114,4 @@ func decodeGetLastRequest(_ context.Context, r *http.Request) (interface{}, erro
 
 func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
 	return json.NewEncoder(w).Encode(response)
-}
-
-// Endpoints are a primary abstraction in go-kit. An endpoint represents a single RPC (method in our service interface)
-
-func makeRegisterEndpoint(svc AuthService, db *sql.DB) endpoint.Endpoint {
-	return func(_ context.Context, request interface{}) (interface{}, error) {
-		req := request.(registerRequest)
-		token, err := svc.Register(req.Login, req.Password, db)
-		return registerResponse{token}, err
-	}
-}
-
-func makeLoginEndpoint(svc AuthService, db *sql.DB) endpoint.Endpoint {
-	return func(_ context.Context, request interface{}) (interface{}, error) {
-		req := request.(loginRequest)
-		token, err := svc.Login(req.Login, req.Password, db)
-		return loginResponse{token}, err
-	}
-}
-
-func makeLogoutEndpoint(svc AuthService, db *sql.DB) endpoint.Endpoint {
-	return func(_ context.Context, request interface{}) (interface{}, error) {
-		req := request.(logoutRequest)
-		response, err := svc.Logout(req.Token, db)
-		return logoutResponse{response}, err
-	}
-}
-
-func makeSendEndpoint(svc MessageService, db *sql.DB) endpoint.Endpoint {
-	return func(_ context.Context, request interface{}) (interface{}, error) {
-		req := request.(sendRequest)
-		response, err := svc.Send(req.Token, req.Data, db)
-		return sendResponse{response}, err
-	}
-}
-
-func makeGetEndpoint(svc MessageService, db *sql.DB) endpoint.Endpoint {
-	return func(_ context.Context, request interface{}) (interface{}, error) {
-		req := request.(getRequest)
-		data, err := svc.Get(req.Token, req.Login, db)
-		return getResponse{data}, err
-	}
-}
-
-func makeGetLastEndpoint(svc MessageService, db *sql.DB) endpoint.Endpoint {
-	return func(_ context.Context, request interface{}) (interface{}, error) {
-		req := request.(getRequest)
-		data, err := svc.GetLast(req.Token, req.Login, db)
-		return getLastResponse{*data}, err
-	}
 }

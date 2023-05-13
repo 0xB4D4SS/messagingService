@@ -5,14 +5,11 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	dotenv "github.com/joho/godotenv"
 	"log"
+	"messagingService/app/services"
+	"messagingService/app/transports"
 	"net/http"
 	"os"
 )
-
-const tokenDefaultLength = 11
-
-// is this required?
-// type Endpoint func(ctx context.Context, request interface{}) (response interface{}, err error)
 
 func initEnv() {
 	err := dotenv.Load(".env")
@@ -24,12 +21,12 @@ func initEnv() {
 func main() {
 	initEnv()
 	db, conErr := sql.Open(os.Getenv("DB_DRIVER"), os.Getenv("DB_CONFIG"))
-	authSvc := authService{}
-	messageSvc := messageService{}
+	authSvc := services.AuthService{}
+	messageSvc := services.MessageService{}
 
 	if conErr != nil {
 		log.Fatal(conErr)
 	}
 
-	log.Fatal(http.ListenAndServe(":8080", MakeHTTPHandler(authSvc, messageSvc, db)))
+	log.Fatal(http.ListenAndServe(":8080", transports.MakeHTTPHandler(authSvc, messageSvc, db)))
 }

@@ -16,10 +16,10 @@ services:
     ports:
       - "3306:3306"
     environment:
-      - MYSQL_ROOT_PASSWORD=test
-      - MYSQL_DATABASE=messaging
-      - MYSQL_USER=test
-      - MYSQL_PASSWORD=test
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - sql_data:/var/lib/mysql
       - ./migrations/:/var/tmp/migrations/
