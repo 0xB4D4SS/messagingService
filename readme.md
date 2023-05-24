@@ -3,9 +3,13 @@
 ### Technology stack
 - Golang 1.20
 - go-kit 0.12.0
-- MySQL 8.0.30
+- MySQL 8.0
 
 ### Local deployment
+- set up dotenv:
+```shell
+cp .env.example .env
+```
 - build containers:
 ```shell
 docker-compose up -d
