@@ -6,9 +6,3 @@ type User struct {
 	Password string
 	Token    *string
 }
-
-type Message struct {
-	Id      int
-	UserId  int
-	Message string
-}

@@ -9,26 +9,6 @@ import (
 	"messagingService/app/services"
 )
 
-type Endpoints struct {
-	RegisterEndpoint endpoint.Endpoint
-	LoginEndpoint    endpoint.Endpoint
-	LogoutEndpoint   endpoint.Endpoint
-	SendEndpoint     endpoint.Endpoint
-	GetEndpoint      endpoint.Endpoint
-	GetLastEndpoint  endpoint.Endpoint
-}
-
-func MakeServerEndpoints(authSvc services.AuthServiceInterface, msgSvc services.MessageServiceInterface, db *sql.DB) Endpoints {
-	return Endpoints{
-		RegisterEndpoint: MakeRegisterEndpoint(authSvc, db),
-		LoginEndpoint:    MakeLoginEndpoint(authSvc, db),
-		LogoutEndpoint:   MakeLogoutEndpoint(authSvc, db),
-		SendEndpoint:     MakeSendEndpoint(msgSvc, db),
-		GetEndpoint:      MakeGetEndpoint(msgSvc, db),
-		GetLastEndpoint:  MakeGetLastEndpoint(msgSvc, db),
-	}
-}
-
 func MakeRegisterEndpoint(svc services.AuthServiceInterface, db *sql.DB) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(requests.RegisterRequest)
